@@ -1,0 +1,12 @@
+segment-anything
+numpy
+matplotlib
+torch
+torchvision
+opencv-python
+pillow
+gdown
+zipfile36
+google-api-python-client
+customtkinter
+CTkMenuBar

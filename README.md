@@ -71,4 +71,21 @@ LaB_it/
 - google-api-python-client: Google Drive integration
 
 ## References
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) 
+- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
+
+## License
+This project is licensed under the MIT License with Commons Clause - see the [LICENSE](LICENSE) file for details.
+
+### What is allowed
+- Use the software for personal purposes
+- Modify and distribute the code
+- Use for educational and research purposes
+- Integrate into non-commercial projects
+
+### What is not allowed
+- Sell the software
+- Provide paid services based on the software
+- Commercial hosting of the software
+- Paid consulting/support services related to the software
+
+All modifications and distributions must include the original copyright and license notices. 

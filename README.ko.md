@@ -71,4 +71,21 @@ LaB_it/
 - google-api-python-client: Google Drive 연동
 
 ## 참고 자료
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) 
+- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
+
+## 라이선스
+이 프로젝트는 MIT License with Commons Clause 하에 라이선스가 부여됩니다 - 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
+
+### 허용되는 사항
+- 개인적인 용도로 소프트웨어 사용
+- 코드 수정 및 배포
+- 교육 및 연구 목적으로 사용
+- 비상업적 프로젝트에 통합
+
+### 제한되는 사항
+- 소프트웨어 판매
+- 소프트웨어 기반의 유료 서비스 제공
+- 소프트웨어의 상업적 호스팅
+- 소프트웨어 관련 유료 컨설팅/지원 서비스
+
+모든 수정 및 배포 시 원본 저작권 및 라이선스 고지를 포함해야 합니다. 

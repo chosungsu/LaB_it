@@ -1199,7 +1199,7 @@ class ImageDialog(ctk.CTkToplevel):
                         "description": f"{self.task_name} dataset",
                         "version": "1.0",
                         "year": 2024,
-                        "contributor": "SegT",
+                        "contributor": "LaB_it",
                         "date_created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     },
                     "images": [],

@@ -673,7 +673,10 @@ class ImageDialog(ctk.CTkToplevel):
         open a download dialog
         """
         from dialog.formatselectdialog import FormatSelectDialog
-        FormatSelectDialog(self, self.task_name, self.download_json)
+        dialog = FormatSelectDialog(self, self.task_name, self.download_json)
+        dialog.transient(self)  # Set ImageDialog as parent
+        dialog.grab_set()  # Make dialog modal
+        self.wait_window(dialog)  # Wait for dialog to close
 
     def set_cursor_mode(self):
         """set cursor mode"""
@@ -798,6 +801,8 @@ class ImageDialog(ctk.CTkToplevel):
                                      if f.lower().endswith(ext)])
             
             if self.files:
+                # Sort files by name
+                self.files.sort(key=lambda x: x[0])
                 self.image_option.configure(values=[name for name, _ in self.files])
                 self.image_option.set(self.files[0][0])
                 self.loading_label.configure(text="")
@@ -1546,9 +1551,191 @@ class ImageDialog(ctk.CTkToplevel):
             if format_type == "yolo":
                 annotation_path = self.yolo_annotation_path
                 default_filename = f"{self.task_name}_annotation_yolo.json"
+                
+                # Initialize or load existing YOLO data
+                if os.path.exists(annotation_path):
+                    try:
+                        with open(annotation_path, "r", encoding="utf-8") as f:
+                            yolo_data = json.load(f)
+                    except:
+                        yolo_data = {"images": []}
+                else:
+                    yolo_data = {"images": []}
+
+                # Update or add current image annotations
+                if self.annotations:
+                    # Remove existing entry for current image if exists
+                    yolo_data["images"] = [img for img in yolo_data["images"] 
+                                         if isinstance(img, dict) and 
+                                         img.get("image_name") != self.cur_image_name]
+                    
+                    # Add current image annotations
+                    yolo_data["images"].append({
+                        "image_name": self.cur_image_name,
+                        "annotations": self.annotations
+                    })
+                    
+                # Sort images by name
+                yolo_data["images"].sort(key=lambda x: x.get("image_name", "") if isinstance(x, dict) else "")
+                    
+                save_data = yolo_data
+                
             else:  # coco
                 annotation_path = self.coco_annotation_path
                 default_filename = f"{self.task_name}_annotation_coco.json"
+                
+                # Create or load existing COCO format data
+                if os.path.exists(annotation_path):
+                    try:
+                        with open(annotation_path, "r", encoding="utf-8") as f:
+                            coco_data = json.load(f)
+                            # Ensure all required fields exist
+                            if "images" not in coco_data:
+                                coco_data["images"] = []
+                            if "annotations" not in coco_data:
+                                coco_data["annotations"] = []
+                            if "categories" not in coco_data:
+                                coco_data["categories"] = []
+                    except:
+                        # If file is corrupted or invalid, create new structure
+                        coco_data = self._create_new_coco_data()
+                else:
+                    coco_data = self._create_new_coco_data()
+
+                # Load YOLO data to get all images
+                yolo_path = self.yolo_annotation_path
+                all_images_data = []
+                if os.path.exists(yolo_path):
+                    try:
+                        with open(yolo_path, "r", encoding="utf-8") as f:
+                            yolo_data = json.load(f)
+                            if isinstance(yolo_data, dict) and "images" in yolo_data:
+                                all_images_data = yolo_data["images"]
+                                # Sort images by name
+                                all_images_data.sort(key=lambda x: x.get("image_name", "") if isinstance(x, dict) else "")
+                    except:
+                        pass
+
+                # Add current image to all_images_data if it has annotations
+                if self.annotations and self.cur_image_name:
+                    # Remove current image if exists
+                    all_images_data = [img for img in all_images_data 
+                                     if isinstance(img, dict) and 
+                                     img.get("image_name") != self.cur_image_name]
+                    # Add current image
+                    all_images_data.append({
+                        "image_name": self.cur_image_name,
+                        "annotations": self.annotations
+                    })
+                    # Sort again after adding current image
+                    all_images_data.sort(key=lambda x: x.get("image_name", "") if isinstance(x, dict) else "")
+
+                # Clear existing data
+                coco_data["images"] = []
+                coco_data["annotations"] = []
+                coco_data["categories"] = []
+
+                # Add category info
+                for i, label_name in enumerate(self.labels):
+                    coco_data["categories"].append({
+                        "id": i + 1,  # category ID starts from 1
+                        "name": label_name,
+                        "supercategory": "object"
+                    })
+
+                # Convert all images to COCO format
+                annotation_id_counter = 1
+                for image_idx, image_data in enumerate(all_images_data, 1):
+                    if not isinstance(image_data, dict):
+                        continue
+
+                    image_name = image_data.get("image_name")
+                    if not image_name:
+                        continue
+
+                    # Get image size
+                    img_width = 0
+                    img_height = 0
+                    if image_name == self.cur_image_name and self.cur_image_pil:
+                        img_width, img_height = self.cur_image_pil.size
+                    else:
+                        # Try to load image to get size
+                        try:
+                            if self.source_type == "drive":
+                                # Find file_id for the image
+                                file_id = None
+                                for name, id in self.files:
+                                    if name == image_name:
+                                        file_id = id
+                                        break
+                                if file_id:
+                                    img = self.get_image_from_drive(file_id)
+                                    img_width, img_height = img.size
+                            else:  # local
+                                img_path = os.path.join(self.folder_id, image_name)
+                                if os.path.exists(img_path):
+                                    img = Image.open(img_path)
+                                    img_width, img_height = img.size
+                        except:
+                            # If failed to get image size, use default or skip
+                            img_width = 1000
+                            img_height = 1000
+
+                    # Add image info
+                    coco_data["images"].append({
+                        "id": image_idx,
+                        "file_name": image_name,
+                        "width": img_width,
+                        "height": img_height
+                    })
+
+                    # Add annotations
+                    annotations = image_data.get("annotations", [])
+                    for annotation in annotations:
+                        if not isinstance(annotation, dict):
+                            continue
+
+                        bbox = annotation.get("bbox")
+                        label = annotation.get("label")
+                        if not bbox or not label:
+                            continue
+
+                        # Get label index from self.labels (not from YOLO format)
+                        try:
+                            label_idx = self.labels.index(label)
+                            category_id = label_idx + 1  # category ID starts from 1
+                        except ValueError:
+                            # If label is not found in self.labels, skip this annotation
+                            continue
+                        
+                        x, y = bbox[0], bbox[1]
+                        width = bbox[2] - bbox[0]
+                        height = bbox[3] - bbox[1]
+                        area = width * height
+                        
+                        coco_annotation = {
+                            "id": annotation_id_counter,
+                            "image_id": image_idx,
+                            "category_id": category_id,
+                            "bbox": [x, y, width, height],
+                            "area": area,
+                            "iscrowd": 0
+                        }
+                        
+                        # Add segmentation info for polygons
+                        if annotation.get("type") == "polygon":
+                            points = annotation.get("points", [])
+                            segmentation = []
+                            for point in points:
+                                segmentation.extend(point)
+                            coco_annotation["segmentation"] = [segmentation]
+                        else:
+                            coco_annotation["segmentation"] = []
+                        
+                        coco_data["annotations"].append(coco_annotation)
+                        annotation_id_counter += 1
+                
+                save_data = coco_data
                 
             if not annotation_path:
                 messagebox.showerror("에러", "어노테이션 경로가 설정되지 않았습니다.")
@@ -1571,16 +1758,41 @@ class ImageDialog(ctk.CTkToplevel):
             
             # Save annotations to both paths
             with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(self.annotations, f, ensure_ascii=False, indent=2)
+                json.dump(save_data, f, ensure_ascii=False, indent=2)
                 
             with open(annotation_path, "w", encoding="utf-8") as f:
-                json.dump(self.annotations, f, ensure_ascii=False, indent=2)
+                json.dump(save_data, f, ensure_ascii=False, indent=2)
             
             self.show_toast(f"{os.path.basename(save_path)}로 저장되었습니다", fg_color=green_color)
             
         except Exception as e:
             messagebox.showerror("에러", f"어노테이션 저장 실패: {str(e)}")
             return
+
+    def _create_new_coco_data(self):
+        """Create new COCO format data structure"""
+        coco_data = {
+            "info": {
+                "description": f"{self.task_name} dataset",
+                "version": "1.0",
+                "year": datetime.datetime.now().year,
+                "contributor": "LaB_it",
+                "date_created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            },
+            "images": [],
+            "annotations": [],
+            "categories": []
+        }
+        
+        # Add category info
+        for i, label_name in enumerate(self.labels):
+            coco_data["categories"].append({
+                "id": i + 1,
+                "name": label_name,
+                "supercategory": "object"
+            })
+            
+        return coco_data
 
     def show_toast(self, message, duration=1500, fg_color=None):
         """show toast message"""

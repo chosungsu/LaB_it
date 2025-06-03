@@ -1,6 +1,6 @@
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from PIL import Image, ImageTk
 import os
 import io
@@ -1545,24 +1545,41 @@ class ImageDialog(ctk.CTkToplevel):
             # Get appropriate annotation path based on format type
             if format_type == "yolo":
                 annotation_path = self.yolo_annotation_path
+                default_filename = f"{self.task_name}_annotation_yolo.json"
             else:  # coco
                 annotation_path = self.coco_annotation_path
+                default_filename = f"{self.task_name}_annotation_coco.json"
                 
             if not annotation_path:
-                messagebox.showerror("Error", "Annotation path is not set.")
+                messagebox.showerror("에러", "어노테이션 경로가 설정되지 않았습니다.")
                 return
                 
-            # Create directory if it doesn't exist
+            # Open file dialog for save location
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                initialfile=default_filename,
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                title="어노테이션 파일 저장"
+            )
+            
+            if not save_path:  # if user cancels
+                return
+                
+            # Create directories if they don't exist
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
             os.makedirs(os.path.dirname(annotation_path), exist_ok=True)
             
-            # Save annotations
+            # Save annotations to both paths
+            with open(save_path, "w", encoding="utf-8") as f:
+                json.dump(self.annotations, f, ensure_ascii=False, indent=2)
+                
             with open(annotation_path, "w", encoding="utf-8") as f:
                 json.dump(self.annotations, f, ensure_ascii=False, indent=2)
             
-            self.show_toast(f"Saved as {os.path.basename(annotation_path)}", fg_color=green_color)
+            self.show_toast(f"{os.path.basename(save_path)}로 저장되었습니다", fg_color=green_color)
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to save annotations: {str(e)}")
+            messagebox.showerror("에러", f"어노테이션 저장 실패: {str(e)}")
             return
 
     def show_toast(self, message, duration=1500, fg_color=None):

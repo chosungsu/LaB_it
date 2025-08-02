@@ -195,11 +195,20 @@ class ImageDialog(ctk.CTkToplevel):
     def show_guide_lines(self, event):
         """Show guide lines at mouse position"""
         
-        # Get the actual canvas coordinates
-        canvas_x = self.canvas.winfo_rootx()
-        canvas_y = self.canvas.winfo_rooty()
-        mouse_x = event.x_root - canvas_x
-        mouse_y = event.y_root - canvas_y
+        # Check if canvas is properly initialized
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            return
+            
+        try:
+            # Get the actual canvas coordinates
+            canvas_x = self.canvas.winfo_rootx()
+            canvas_y = self.canvas.winfo_rooty()
+            mouse_x = event.x_root - canvas_x
+            mouse_y = event.y_root - canvas_y
+        except Exception:
+            # If canvas is not ready, use event coordinates directly
+            mouse_x = event.x
+            mouse_y = event.y
         
         if self.current_tool != "polygon":
             self.canvas.delete("guide_line")
@@ -322,56 +331,7 @@ class ImageDialog(ctk.CTkToplevel):
         )
         close_btn.pack(side="right")
         
-        # add new label frame
-        add_label_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
-        add_label_frame.pack(fill="x", padx=10, pady=5)
-        
-        # new label input field
-        self.new_label_entry = ctk.CTkEntry(
-            add_label_frame,
-            placeholder_text="Add new label",
-            font=ctk.CTkFont(size=13),
-            height=35,
-            fg_color=("#ffffff", "#1e1e1e"),
-            text_color=("#18181b", "#f5f5f5"),
-            placeholder_text_color=("#64748b", "#9ca3af")
-        )
-        self.new_label_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        # add button
-        add_btn = ctk.CTkButton(
-            add_label_frame,
-            text="",
-            image=self.icons["plus"],
-            width=35,
-            height=35,
-            command=self.add_new_label,
-            fg_color="transparent"
-        )
-        add_btn.pack(side="right")
-        
-        # add Auto Labeling text (left alignment)
-        auto_label_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
-        auto_label_frame.pack(fill="x", padx=10, pady=(5,0))
-        
-        ctk.CTkLabel(
-            auto_label_frame,
-            text="Auto Labeling",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
-        ).pack(fill="x")
 
-        # current image label input field
-        self.label_entry = ctk.CTkEntry(
-            self.left_panel,
-            placeholder_text="Label will be auto-extracted", 
-            font=ctk.CTkFont(size=13),
-            height=35,
-            fg_color=("#ffffff", "#1e1e1e"),
-            text_color=("#18181b", "#f5f5f5"),
-            placeholder_text_color=("#64748b", "#9ca3af")
-        )
-        self.label_entry.pack(fill="x", padx=10, pady=5)
         
         # label list container
         self.label_list_container = ctk.CTkFrame(self.left_panel, fg_color=("#f3f4f6", "#6b7480"), corner_radius=0)
@@ -417,50 +377,7 @@ class ImageDialog(ctk.CTkToplevel):
         # update annotation list
         self.update_annotation_list()
 
-    def add_new_label(self):
-        """add new label"""
-        new_label = self.new_label_entry.get().strip()
-        if not new_label:
-            self.show_toast("Please enter a label name", fg_color=("#ef4444", "#dc2626"))
-            return
-            
-        if new_label in self.labels:
-            self.show_toast("Label already exists", fg_color=("#ef4444", "#dc2626"))
-            return
-            
-        # read task.json file
-        try:
-            with open(self.task_path, "r", encoding="utf-8") as f:
-                task_data = json.load(f)
-        except Exception as e:
-            self.show_toast(f"Failed to load task data: {str(e)}", fg_color=("#ef4444", "#dc2626"))
-            return
-            
-        # add new label and color
-        if "labels" not in task_data:
-            task_data["labels"] = []
-        if "colors" not in task_data:
-            task_data["colors"] = {}
-            
-        task_data["labels"].append(new_label)
-        if new_label not in task_data["colors"]:
-            task_data["colors"][new_label] = self.generate_random_color()
-            
-        # save file
-        try:
-            with open(self.task_path, "w", encoding="utf-8") as f:
-                json.dump(task_data, f, ensure_ascii=False, indent=2)
-                
-            # update memory
-            self.labels = task_data["labels"]
-            self.label_colors = task_data["colors"]
-            
-            # update UI
-            self.new_label_entry.delete(0, 'end')
-            self.update_label_list()
-            self.show_toast("New label added!")
-        except Exception as e:
-            self.show_toast(f"Failed to save task data: {str(e)}", fg_color=("#ef4444", "#dc2626"))
+
 
     def show_color_picker(self, label):
         """show color picker dialog"""
@@ -837,8 +754,6 @@ class ImageDialog(ctk.CTkToplevel):
             
             # extract label from filename
             label = self.extract_label_from_filename(name)
-            self.label_entry.delete(0, 'end')
-            self.label_entry.insert(0, label)
             
             self.loading_label.configure(text="Loading Image...")
             self.loading_label.place(relx=0.5, rely=0.5, anchor="center")
@@ -1123,6 +1038,18 @@ class ImageDialog(ctk.CTkToplevel):
         # update canvas background color
         self.canvas.configure(bg="#ffffff" if not is_dark else "#1e1e1e")
 
+    def extract_category_id_from_filename(self, filename):
+        """Extract category ID from filename (e.g., 104 from '104) 농심 신라면 컵 6개입.jpg')"""
+        # remove extension
+        name_without_ext = os.path.splitext(filename)[0]
+        
+        # find number pattern before )
+        match = re.match(r'(\d+)\)', name_without_ext)
+        if match:
+            return int(match.group(1))
+        
+        return None
+
     def save_task_json(self):
         """save annotation data of current image"""
         if not self.cur_image_name:
@@ -1135,6 +1062,9 @@ class ImageDialog(ctk.CTkToplevel):
         
         # image size
         img_width, img_height = self.cur_image_pil.size
+        
+        # extract category ID from filename
+        category_id = self.extract_category_id_from_filename(self.cur_image_name)
         
         # create YOLO format data
         yolo_annotations = []
@@ -1154,8 +1084,11 @@ class ImageDialog(ctk.CTkToplevel):
             width_norm = width / img_width
             height_norm = height / img_height
             
-            # label index
-            label_idx = self.labels.index(label) if label in self.labels else 0
+            # Use category_id from filename if available, otherwise use label index
+            if category_id is not None:
+                label_idx = category_id
+            else:
+                label_idx = self.labels.index(label) if label in self.labels else 0
             
             yolo_format = f"{label_idx} {x_center_norm:.6f} {y_center_norm:.6f} {width_norm:.6f} {height_norm:.6f}"
             
@@ -1211,13 +1144,21 @@ class ImageDialog(ctk.CTkToplevel):
                     "annotations": [],
                     "categories": []
                 }
-                # add category info
-                for i, label_name in enumerate(self.labels):
+                # add category info - use category_id from filename if available
+                if category_id is not None:
                     coco_data["categories"].append({
-                        "id": i + 1,
-                        "name": label_name,
+                        "id": category_id,
+                        "name": f"category_{category_id}",
                         "supercategory": "object"
                     })
+                else:
+                    # add category info for all labels
+                    for i, label_name in enumerate(self.labels):
+                        coco_data["categories"].append({
+                            "id": i + 1,
+                            "name": label_name,
+                            "supercategory": "object"
+                        })
 
             # find or create image ID
             image_id = None
@@ -1248,7 +1189,12 @@ class ImageDialog(ctk.CTkToplevel):
                 for annotation in self.annotations:
                     bbox = annotation["bbox"]
                     label = annotation["label"]
-                    label_idx = self.labels.index(label) if label in self.labels else 0
+                    
+                    # Use category_id from filename if available, otherwise use label index
+                    if category_id is not None:
+                        label_idx = category_id
+                    else:
+                        label_idx = self.labels.index(label) if label in self.labels else 0
                     
                     x, y = bbox[0], bbox[1]
                     width = bbox[2] - bbox[0]
@@ -1259,7 +1205,7 @@ class ImageDialog(ctk.CTkToplevel):
                     coco_annotation = {
                         "id": annotation_id,
                         "image_id": image_id,
-                        "category_id": label_idx + 1,
+                        "category_id": label_idx,
                         "bbox": [x, y, width, height],
                         "area": area,
                         "iscrowd": 0
@@ -1289,7 +1235,8 @@ class ImageDialog(ctk.CTkToplevel):
 
     def get_current_label_color(self):
         """return color of current selected label"""
-        label = self.label_entry.get().strip()
+        # Use first label as default
+        label = self.labels[0] if self.labels else ""
         if label in self.label_colors:
             return self.label_colors[label]
         # return default color (if label is not set or color is not set)
@@ -1297,6 +1244,9 @@ class ImageDialog(ctk.CTkToplevel):
 
     def end_draw(self, event):
         """end drag"""
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            return
+            
         if self.current_tool == "cursor" and self.is_dragging:
             self.is_dragging = False
             self.canvas.config(cursor="arrow")
@@ -1342,7 +1292,7 @@ class ImageDialog(ctk.CTkToplevel):
         # add new annotation
         annotation = {
             "bbox": bbox,
-            "label": self.label_entry.get().strip(),
+            "label": self.labels[0] if self.labels else "",
             "type": self.current_tool
         }
         self.annotations.append(annotation)
@@ -1356,6 +1306,9 @@ class ImageDialog(ctk.CTkToplevel):
 
     def draw(self, event):
         """dragging"""
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            return
+            
         if self.current_tool == "cursor" and self.is_dragging:
             x = self.canvas.canvasx(event.x)
             y = self.canvas.canvasy(event.y)
@@ -1389,6 +1342,9 @@ class ImageDialog(ctk.CTkToplevel):
 
     def start_draw(self, event):
         """start dragging"""
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            return
+            
         if not self.cur_image_pil:
             return
             
@@ -1466,6 +1422,9 @@ class ImageDialog(ctk.CTkToplevel):
 
     def on_mouse_move(self, event):
         """show temporary line when mouse moves"""
+        if not hasattr(self, 'canvas') or self.canvas is None:
+            return
+            
         if self.current_tool == "polygon" and self.polygon_points:
             x = self.canvas.canvasx(event.x)
             y = self.canvas.canvasy(event.y)
@@ -1521,7 +1480,7 @@ class ImageDialog(ctk.CTkToplevel):
         # add annotation
         annotation = {
             "bbox": bbox,
-            "label": self.label_entry.get().strip(),
+            "label": self.labels[0] if self.labels else "",
             "type": "polygon",
             "points": image_points
         }

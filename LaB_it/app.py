@@ -18,6 +18,9 @@ class LaB_itApp(ctk.CTk):
 
         TaskManagerDialog(self)
 
-if __name__ == "__main__":
+def launch_app():
     app = LaB_itApp()
     app.mainloop()
+
+if __name__ == "__main__":
+    launch_app()

@@ -245,7 +245,19 @@ class SetupDialog(ctk.CTkToplevel):
         if os.path.exists(self.task_path):
             try:
                 with open(self.task_path, "r", encoding="utf-8") as f:
-                    existing_data = json.load(f)
+                    loaded_data = json.load(f)
+                    # Check if loaded_data is a list (old format) or dict (new format)
+                    if isinstance(loaded_data, list):
+                        # Convert old list format to new dict format
+                        existing_data = {
+                            "folder_id": "",
+                            "local_folder_path": "",
+                            "source_type": self.source_type,
+                            "labels": [],
+                            "label_dict": {}
+                        }
+                    else:
+                        existing_data = loaded_data
             except Exception as e:
                 print(f"Warning: Failed to load existing task data: {str(e)}")
 

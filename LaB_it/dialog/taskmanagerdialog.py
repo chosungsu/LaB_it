@@ -429,7 +429,9 @@ class TaskManagerDialog(ctk.CTkToplevel):
             return
         with open(path, "w", encoding="utf-8") as f:
             json.dump([], f)
-        self.destroy()
+        # Clear the entry and refresh task list instead of destroying the window
+        self.new_task_entry.delete(0, "end")
+        self.refresh_task_list()
 
     def load_task(self):
         """load task"""

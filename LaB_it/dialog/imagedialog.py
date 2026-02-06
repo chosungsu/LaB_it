@@ -12,7 +12,7 @@ import json
 from CTkMenuBar import *
 import tkinter.colorchooser as colorchooser
 import datetime
-from setting import *
+from ..setting import *
 
 class ImageDialog(ctk.CTkToplevel):
     def __init__(self, master, folder_id, labels, task_path, label_dict, source_type="drive", yolo_annotation_path=None, coco_annotation_path=None):
@@ -589,7 +589,7 @@ class ImageDialog(ctk.CTkToplevel):
         """
         open a download dialog
         """
-        from dialog.formatselectdialog import FormatSelectDialog
+        from .formatselectdialog import FormatSelectDialog
         dialog = FormatSelectDialog(self, self.task_name, self.download_json)
         dialog.transient(self)  # Set ImageDialog as parent
         dialog.grab_set()  # Make dialog modal
@@ -881,7 +881,7 @@ class ImageDialog(ctk.CTkToplevel):
         except Exception as e:
             print(f"Warning: Failed to load task data: {str(e)}")
             source_type = "drive"  # use default value if error occurs
-        from dialog.settingdialog import SetupDialog
+        from .settingdialog import SetupDialog
         SetupDialog(self.master, task_name, lambda folder_id, labels: None, source_type)
 
     def deactivate_drag_mode(self):

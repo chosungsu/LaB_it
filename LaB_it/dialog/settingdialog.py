@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from setting import *
+from ..setting import *
 from CTkMenuBar import *
 import os
 import json
@@ -311,7 +311,7 @@ class SetupDialog(ctk.CTkToplevel):
             yolo_annotation_path = annotation_paths["yolo_local"]
             coco_annotation_path = annotation_paths["coco_local"]
         
-        from dialog.imagedialog import ImageDialog
+        from .imagedialog import ImageDialog
         ImageDialog(
             self.master, 
             folder_path, 

@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from setting import *
+from ..setting import *
 
 class FormatSelectDialog(ctk.CTkToplevel):
     def __init__(self, master, task_name, download_function):

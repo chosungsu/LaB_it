@@ -1,8 +1,8 @@
 import customtkinter as ctk
 import os
 from CTkMenuBar import *
-from dialog.taskmanagerdialog import TaskManagerDialog
-from setting import *
+from .dialog.taskmanagerdialog import TaskManagerDialog
+from .setting import *
 
 # create necessary directories
 for dir_path in [TASKS_DIR, ANNOTATIONS_DIR]:

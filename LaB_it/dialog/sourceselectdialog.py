@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from setting import *
+from ..setting import *
 
 class SourceSelectDialog(ctk.CTkToplevel):
     def __init__(self, master, task_name, on_source_selected):

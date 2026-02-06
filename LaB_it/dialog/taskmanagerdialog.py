@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from setting import *
+from ..setting import *
 from CTkMenuBar import *
 import os
 import json
@@ -435,13 +435,13 @@ class TaskManagerDialog(ctk.CTkToplevel):
 
     def load_task(self):
         """load task"""
-        from dialog.sourceselectdialog import SourceSelectDialog
+        from .sourceselectdialog import SourceSelectDialog
         if self.selected_task:
             # hide main window
             self.withdraw()
-            
+
             def on_source_selected(task_name, source_type):
-                from dialog.settingdialog import SetupDialog
+                from .settingdialog import SetupDialog
                 self.withdraw()  # hide TaskManager window
                 def on_setup_done(folder_id, labels):
                     self.destroy()  # TaskManager completely close
